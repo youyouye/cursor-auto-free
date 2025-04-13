@@ -1,0 +1,28 @@
+FROM python:3.9-slim
+
+# 安装Chrome依赖
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    git \
+    openssh-client \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装Chrome
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 克隆代码库
+WORKDIR /app
+RUN git clone https://github.com/youyouye/cursor-auto-free.git .
+
+# 安装Python依赖
+RUN pip install --no-cache-dir -r requirement.txt
+
+# 运行脚本
+CMD ["python", "cursor_pro_keep_alive.py"]

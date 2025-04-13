@@ -94,6 +94,84 @@ def check_verification_success(tab) -> Optional[VerificationStatus]:
     return None
 
 
+
+def handle_first_turnstile(tab, max_retries: int = 2, retry_interval: tuple = (1, 2)) -> bool:
+    """
+    Handle Turnstile verification
+
+    Args:
+        tab: Browser tab object
+        max_retries: Maximum number of retries
+        retry_interval: Retry interval range (min, max)
+
+    Returns:
+        bool: Whether verification was successful
+
+    Raises:
+        TurnstileError: Exception during verification process
+    """
+    logging.info(get_translation("detecting_turnstile"))
+    save_screenshot(tab, "start")
+
+    retry_count = 0
+
+    try:
+        while retry_count < max_retries:
+            retry_count += 1
+            logging.debug(get_translation("retry_verification", count=retry_count))
+
+            try:
+                # Locate verification frame element
+                challenge_check = (
+                    tab.ele("@id=aPYp3", timeout=2)
+                    .child()
+                    .child()
+                    .shadow_root.ele("tag:iframe")
+                    .ele("tag:body")
+                    .sr("tag:input")
+                )
+
+                if challenge_check:
+                    logging.info(get_translation("detected_turnstile"))
+                    # Random delay before clicking verification
+                    time.sleep(random.uniform(1, 3))
+                    challenge_check.click()
+                    time.sleep(2)
+
+                    # Save screenshot after verification
+                    save_screenshot(tab, "clicked")
+
+                    # Check verification result
+                    # if check_verification_success(tab):
+                    #     logging.info(get_translation("turnstile_verification_passed"))
+                    #     save_screenshot(tab, "success")
+                    #     return True
+
+            except Exception as e:
+                logging.debug(f"Current attempt unsuccessful: {str(e)}")
+
+            # Check if already verified
+            # if check_verification_success(tab):
+            return True
+
+            # Random delay before next attempt
+            # time.sleep(random.uniform(*retry_interval))
+
+        # Exceeded maximum retries
+        logging.error(get_translation("verification_failed_max_retries", max_retries=max_retries))
+        logging.error(
+            "Please visit the open source project for more information: https://github.com/chengazhen/cursor-auto-free"
+        )
+        save_screenshot(tab, "failed")
+        return False
+
+    except Exception as e:
+        error_msg = get_translation("turnstile_exception", error=str(e))
+        logging.error(error_msg)
+        save_screenshot(tab, "error")
+        raise TurnstileError(error_msg)
+
+
 def handle_turnstile(tab, max_retries: int = 2, retry_interval: tuple = (1, 2)) -> bool:
     """
     Handle Turnstile verification
@@ -230,6 +308,12 @@ def sign_up_account(browser, tab):
     logging.info(get_translation("start_account_registration"))
     logging.info(get_translation("visiting_registration_page", url=sign_up_url))
     tab.get(sign_up_url)
+
+    if tab.ele("@name=first_name"):
+        pass
+    else:
+        if handle_first_turnstile(tab) == False:
+            return False
 
     try:
         if tab.ele("@name=first_name"):
@@ -431,8 +515,6 @@ if __name__ == "__main__":
     print("\n")
     language.select_language_prompt()
     
-    greater_than_0_45 = check_cursor_version()
-
     browser_manager = None
     accounts = []
 
