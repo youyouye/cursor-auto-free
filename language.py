@@ -279,22 +279,9 @@ class Language:
         print(self.translations["cn"]["select_language"])
         print(self.translations["cn"]["chinese"])
         print(self.translations["cn"]["english"])
-        
-        while True:
-            try:
-                choice = int(input().strip())
-                if choice == 1:
-                    self.set_language("cn")
-                    print(self.get("language_selected"))
-                    return "cn"
-                elif choice == 2:
-                    self.set_language("en")
-                    print(self.get("language_selected"))
-                    return "en"
-                else:
-                    print(self.translations["cn"]["invalid_option"])
-            except ValueError:
-                print(self.translations["cn"]["enter_valid_number"])
+
+        self.set_language("cn")
+
 
 # Global language instance
 language = Language()

@@ -1,7 +1,13 @@
+import base64
+import hashlib
 import os
 import platform
 import json
+import secrets
 import sys
+import uuid
+
+import requests
 from colorama import Fore, Style
 from enum import Enum
 from typing import Optional
@@ -164,7 +170,7 @@ def handle_turnstile(tab, max_retries: int = 2, retry_interval: tuple = (1, 2)) 
         raise TurnstileError(error_msg)
 
 
-def get_cursor_session_token(tab, max_attempts=3, retry_interval=2):
+def get_cursor_session_token(tab, user_agent, max_attempts=3, retry_interval=2):
     """
     Get Cursor session token with retry mechanism
     :param tab: Browser tab
@@ -172,35 +178,44 @@ def get_cursor_session_token(tab, max_attempts=3, retry_interval=2):
     :param retry_interval: Retry interval (seconds)
     :return: Session token or None
     """
-    logging.info(get_translation("getting_cookie"))
-    attempts = 0
 
-    while attempts < max_attempts:
-        try:
-            cookies = tab.cookies()
-            for cookie in cookies:
-                if cookie.get("name") == "WorkosCursorSessionToken":
-                    return cookie["value"].split("%3A%3A")[1]
+    def _generate_pkce_pair():
+        code_verifier = secrets.token_urlsafe(43)
+        code_challenge_digest = hashlib.sha256(code_verifier.encode('utf-8')).digest()
+        code_challenge = base64.urlsafe_b64encode(code_challenge_digest).decode('utf-8').rstrip('=')
+        return code_verifier, code_challenge
 
-            attempts += 1
-            if attempts < max_attempts:
-                logging.warning(
-                    get_translation("cookie_attempt_failed", attempts=attempts, retry_interval=retry_interval)
-                )
-                time.sleep(retry_interval)
-            else:
-                logging.error(
-                    get_translation("cookie_max_attempts", max_attempts=max_attempts)
-                )
+    try:
 
-        except Exception as e:
-            logging.error(get_translation("cookie_failure", error=str(e)))
-            attempts += 1
-            if attempts < max_attempts:
-                logging.info(get_translation("retry_in_seconds", seconds=retry_interval))
-                time.sleep(retry_interval)
+        verifier, challenge = _generate_pkce_pair()
+        id = uuid.uuid4()
+        client_login_url = f"https://www.cursor.com/cn/loginDeepControl?challenge={challenge}&uuid={id}&mode=login"
+        tab.get(client_login_url)
+        tab.ele("xpath=//span[contains(text(), 'Yes, Log In')]").click()
 
-    return None
+        auth_pooll_url = f"https://api2.cursor.sh/auth/poll?uuid={id}&verifier={verifier}"
+        headers = {
+            "User-Agent": user_agent,
+            "Accept": "*/*"
+        }
+        response = requests.get(auth_pooll_url, headers=headers, timeout=5)
+        data = response.json()
+        accessToken = data.get("accessToken", None)
+        authId = data.get("authId", "")
+        if len(authId.split("|")) > 1:
+            userId = authId.split("|")[1]
+            token = f"{userId}%3A%3A{accessToken}"
+        else:
+            token = accessToken
+    except e:
+        print(e)
+        return None
+
+    if token is not None:
+        print(f"[Register] Get Account Cookie Successfully.")
+    else:
+        print(f"[Register] Get Account Cookie Failed.")
+    return token
 
 
 def update_cursor_auth(email=None, access_token=None, refresh_token=None):
@@ -238,7 +253,8 @@ def sign_up_account(browser, tab):
         logging.error(get_translation("registration_page_access_failed", error=str(e)))
         return False
 
-    handle_turnstile(tab)
+    if handle_turnstile(tab) == False:
+        return False
 
     try:
         if tab.ele("@name=password"):
@@ -258,7 +274,8 @@ def sign_up_account(browser, tab):
         logging.error(get_translation("registration_failed_email_used"))
         return False
 
-    handle_turnstile(tab)
+    if handle_turnstile(tab) == False:
+        return False
 
     while True:
         try:
@@ -284,7 +301,9 @@ def sign_up_account(browser, tab):
         except Exception as e:
             logging.error(get_translation("verification_code_process_error", error=str(e)))
 
-    handle_turnstile(tab)
+    if handle_turnstile(tab) == False:
+        return False
+
     wait_time = random.randint(3, 6)
     for i in range(wait_time):
         logging.info(get_translation("waiting_system_processing", seconds=wait_time-i))
@@ -326,9 +345,7 @@ class EmailGenerator:
             )
         ),
     ):
-        configInstance = Config()
-        configInstance.print_config()
-        self.domain = configInstance.get_domain()
+        self.domain = ""
         self.names = self.load_names()
         self.default_password = password
         self.default_first_name = self.generate_random_name()
@@ -415,103 +432,103 @@ if __name__ == "__main__":
     language.select_language_prompt()
     
     greater_than_0_45 = check_cursor_version()
+
     browser_manager = None
-    try:
-        logging.info(get_translation("initializing_program"))
-        ExitCursor()
+    accounts = []
 
-        # Prompt user to select operation mode
-        print(get_translation("select_operation_mode"))
-        print(get_translation("reset_machine_code_only"))
-        print(get_translation("complete_registration"))
+    # with open("/Users/bytedance/project/cursor-auto-free/hotmal.txt", 'r', encoding='utf-8') as f:
+    #     for line in f:
+    #         line = line.strip()
+    #         if line and '----' in line:
+    #             email, password, auth, clientId = line.split('----')
+    #             accounts.append((email.strip(), password.strip(), auth.strip(), clientId.strip()))
 
-        while True:
-            try:
-                choice = int(input(get_translation("enter_option")).strip())
-                if choice in [1, 2]:
-                    break
+    for i in range(1000):
+        params = {
+            "card": "Y6IQPAG9P2CIYMQXPSM3I38CDWY95C5NKEX0CZXQXXW4K0BE",
+            "shuliang": 1,
+            "leixing": "hotmail"
+        }
+        resp = requests.get("https://zizhu.shanyouxiang.com/huoqu", params=params)
+        account, password, refresh_token, client_id = resp.text.split('----')
+
+        try:
+            logging.info(get_translation("initializing_program"))
+            ExitCursor()
+
+            # Prompt user to select operation mode
+            print(get_translation("select_operation_mode"))
+            print(get_translation("reset_machine_code_only"))
+            print(get_translation("complete_registration"))
+
+            logging.info(get_translation("initializing_browser"))
+
+            # Get user_agent
+            user_agent = get_user_agent()
+            if not user_agent:
+                logging.error(get_translation("get_user_agent_failed"))
+                user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+            # Remove "HeadlessChrome" from user_agent
+            user_agent = user_agent.replace("HeadlessChrome", "Chrome")
+
+            browser_manager = BrowserManager()
+            browser = browser_manager.init_browser(user_agent)
+
+            # Get and print browser's user-agent
+            user_agent = browser.latest_tab.run_js("return navigator.userAgent")
+
+            logging.info(
+                "Please visit the open source project for more information: https://github.com/chengazhen/cursor-auto-free"
+            )
+            logging.info(get_translation("configuration_info"))
+            login_url = "https://authenticator.cursor.sh"
+            sign_up_url = "https://authenticator.cursor.sh/sign-up"
+            settings_url = "https://www.cursor.com/settings"
+            mail_url = "https://tempmail.plus"
+
+            logging.info(get_translation("generating_random_account"))
+
+            email_generator = EmailGenerator()
+            first_name = email_generator.default_first_name
+            last_name = email_generator.default_last_name
+
+            logging.info(get_translation("generated_email_account", email=account))
+
+            logging.info(get_translation("initializing_email_verification"))
+            email_handler = EmailVerificationHandler(account, refresh_token, client_id)
+
+            auto_update_cursor_auth = True
+
+            tab = browser.latest_tab
+
+            tab.run_js("try { turnstile.reset() } catch(e) { }")
+
+            logging.info(get_translation("starting_registration"))
+            logging.info(get_translation("visiting_login_page", url=login_url))
+            tab.get(login_url)
+
+            if sign_up_account(browser, tab):
+                logging.info(get_translation("getting_session_token"))
+                token = get_cursor_session_token(tab, user_agent)
+                if token:
+                    logging.info("final token: " + token)
+                    headers = {
+                        "key": "A3E99D69-0F3E-4361-A81D-488CB65D8E60",
+                        "token": "0048e26b2abe4d32709c31c284b1dd921f2c9b4c2c1167750964245002c381708960829",
+                        "Content-Type": "application/json"
+                    }
+
+                    with open('tokens.txt', 'a', encoding='utf-8') as file:
+                        file.write(token + '\n')
+
+                    logging.info(get_translation("all_operations_completed"))
+                    print_end_message()
                 else:
-                    print(get_translation("invalid_option"))
-            except ValueError:
-                print(get_translation("enter_valid_number"))
+                    logging.error(get_translation("session_token_failed"))
 
-        if choice == 1:
-            # Only reset machine code
-            reset_machine_id(greater_than_0_45)
-            logging.info(get_translation("machine_code_reset_complete"))
-            print_end_message()
-            sys.exit(0)
-
-        logging.info(get_translation("initializing_browser"))
-
-        # Get user_agent
-        user_agent = get_user_agent()
-        if not user_agent:
-            logging.error(get_translation("get_user_agent_failed"))
-            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
-        # Remove "HeadlessChrome" from user_agent
-        user_agent = user_agent.replace("HeadlessChrome", "Chrome")
-
-        browser_manager = BrowserManager()
-        browser = browser_manager.init_browser(user_agent)
-
-        # Get and print browser's user-agent
-        user_agent = browser.latest_tab.run_js("return navigator.userAgent")
-
-        logging.info(
-            "Please visit the open source project for more information: https://github.com/chengazhen/cursor-auto-free"
-        )
-        logging.info(get_translation("configuration_info"))
-        login_url = "https://authenticator.cursor.sh"
-        sign_up_url = "https://authenticator.cursor.sh/sign-up"
-        settings_url = "https://www.cursor.com/settings"
-        mail_url = "https://tempmail.plus"
-
-        logging.info(get_translation("generating_random_account"))
-
-        email_generator = EmailGenerator()
-        first_name = email_generator.default_first_name
-        last_name = email_generator.default_last_name
-        account = email_generator.generate_email()
-        password = email_generator.default_password
-
-        logging.info(get_translation("generated_email_account", email=account))
-
-        logging.info(get_translation("initializing_email_verification"))
-        email_handler = EmailVerificationHandler(account)
-
-        auto_update_cursor_auth = True
-
-        tab = browser.latest_tab
-
-        tab.run_js("try { turnstile.reset() } catch(e) { }")
-
-        logging.info(get_translation("starting_registration"))
-        logging.info(get_translation("visiting_login_page", url=login_url))
-        tab.get(login_url)
-
-        if sign_up_account(browser, tab):
-            logging.info(get_translation("getting_session_token"))
-            token = get_cursor_session_token(tab)
-            if token:
-                logging.info(get_translation("updating_auth_info"))
-                update_cursor_auth(
-                    email=account, access_token=token, refresh_token=token
-                )
-                logging.info(
-                    "Please visit the open source project for more information: https://github.com/chengazhen/cursor-auto-free"
-                )
-                logging.info(get_translation("resetting_machine_code"))
-                reset_machine_id(greater_than_0_45)
-                logging.info(get_translation("all_operations_completed"))
-                print_end_message()
-            else:
-                logging.error(get_translation("session_token_failed"))
-
-    except Exception as e:
-        logging.error(get_translation("program_error", error=str(e)))
-    finally:
-        if browser_manager:
-            browser_manager.quit()
-        input(get_translation("program_exit_message"))
+        except Exception as e:
+            logging.error(get_translation("program_error", error=str(e)))
+        finally:
+            if browser_manager:
+                browser_manager.quit()

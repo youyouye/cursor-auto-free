@@ -11,17 +11,19 @@ from email.parser import Parser
 
 
 class EmailVerificationHandler:
-    def __init__(self,account):
-        self.imap = Config().get_imap()
-        self.username = Config().get_temp_mail()
-        self.epin = Config().get_temp_mail_epin()
+    def __init__(self,account, refresh_token, client_id):
+        self.imap = ""
+        self.username = ""
+        self.epin = ""
         self.session = requests.Session()
-        self.emailExtension = Config().get_temp_mail_ext()
+        self.emailExtension = ""
         # 获取协议类型，默认为 POP3
-        self.protocol = Config().get_protocol() or 'POP3'
+        self.protocol = 'POP3'
         self.account = account
+        self.refresh_token = refresh_token
+        self.client_id = client_id
 
-    def get_verification_code(self, max_retries=5, retry_interval=60):
+    def get_verification_code(self, max_retries=5, retry_interval=10):
         """
         获取验证码，带有重试机制。
 
@@ -36,19 +38,9 @@ class EmailVerificationHandler:
         for attempt in range(max_retries):
             try:
                 logging.info(f"尝试获取验证码 (第 {attempt + 1}/{max_retries} 次)...")
-
-                if not self.imap:
-                    verify_code, first_id = self._get_latest_mail_code()
-                    if verify_code is not None and first_id is not None:
-                        self._cleanup_mail(first_id)
-                        return verify_code
-                else:
-                    if self.protocol.upper() == 'IMAP':
-                        verify_code = self._get_mail_code_by_imap()
-                    else:
-                        verify_code = self._get_mail_code_by_pop3()
-                    if verify_code is not None:
-                        return verify_code
+                verify_code = self._get_mail_code_by_hotmail()
+                if verify_code is not None:
+                    return verify_code
 
                 if attempt < max_retries - 1:  # 除了最后一次尝试，都等待
                     logging.warning(f"未获取到验证码，{retry_interval} 秒后重试...")
@@ -146,6 +138,24 @@ class EmailVerificationHandler:
                 except Exception as e:
                     logging.error(f"解码邮件正文失败: {e}")
         return ""
+
+    def _get_mail_code_by_hotmail(self, retry = 0):
+        url = "https://ms-oauth2api-pi.vercel.app/api/mail-new"
+
+        params = {
+            "refresh_token": self.refresh_token,
+            "client_id": self.client_id,
+            "email": self.account,
+            "mailbox": "INBOX",
+            "response_type": "json"
+        }
+
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            # 查找6位数字
+            pattern = r'Enter the code below.*?(\d{6}).*?This code expires'
+            number = re.search(pattern, response.text, re.DOTALL).group(1)
+            return number
 
     # 使用 POP3 获取邮件
     def _get_mail_code_by_pop3(self, retry = 0):
