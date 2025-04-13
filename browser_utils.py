@@ -40,9 +40,9 @@ class BrowserManager:
         if user_agent:
             co.set_user_agent(user_agent)
 
-        co.headless(
-            os.getenv("BROWSER_HEADLESS", "True").lower() == "true"
-        )  # 生产环境使用无头模式
+        # co.headless(
+        #     os.getenv("BROWSER_HEADLESS", "True").lower() == "true"
+        # )  # 生产环境使用无头模式
 
         # Mac 系统特殊处理
         if sys.platform == "darwin":
