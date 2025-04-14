@@ -600,6 +600,16 @@ if __name__ == "__main__":
                         "token": "0048e26b2abe4d32709c31c284b1dd921f2c9b4c2c1167750964245002c381708960829",
                         "Content-Type": "application/json"
                     }
+                    apikey = token
+                    param = {
+                        "apikey": apikey,
+                        "email": account,
+                        "password": password,
+                        "outDate": 10000,
+                    }
+
+                    resp = requests.post("http://43.138.106.92:9000/ai/character/insertCursor", headers=headers,
+                                         json=param)
 
                     with open('tokens.txt', 'a', encoding='utf-8') as file:
                         file.write(token + '\n')
