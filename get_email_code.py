@@ -23,7 +23,7 @@ class EmailVerificationHandler:
         self.refresh_token = refresh_token
         self.client_id = client_id
 
-    def get_verification_code(self, max_retries=5, retry_interval=10):
+    def get_verification_code(self, max_retries=3, retry_interval=10):
         """
         获取验证码，带有重试机制。
 
@@ -48,13 +48,8 @@ class EmailVerificationHandler:
 
             except Exception as e:
                 logging.error(f"获取验证码失败: {e}")  # 记录更一般的异常
-                if attempt < max_retries - 1:
-                    logging.error(f"发生错误，{retry_interval} 秒后重试...")
-                    time.sleep(retry_interval)
-                else:
-                    raise Exception(f"获取验证码失败且已达最大重试次数: {e}") from e
-
-        raise Exception(f"经过 {max_retries} 次尝试后仍未获取到验证码。")
+                return None
+        return None
 
     # 使用imap获取邮件
     def _get_mail_code_by_imap(self, retry = 0):
