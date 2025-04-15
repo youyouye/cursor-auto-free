@@ -525,7 +525,7 @@ if __name__ == "__main__":
     #             email, password, auth, clientId = line.split('----')
     #             accounts.append((email.strip(), password.strip(), auth.strip(), clientId.strip()))
 
-    for i in range(1000):
+    for i in range(10000000):
         params = {
             "card": "0X11O6R9XGXM0SAZRSATOHMWADHOF8BC9DFLI0GI4ZE2PSW1",
             "shuliang": 1,
