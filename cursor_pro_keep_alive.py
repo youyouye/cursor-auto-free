@@ -527,7 +527,7 @@ if __name__ == "__main__":
 
     for i in range(1000):
         params = {
-            "card": "L5295ZJ4XP34IJ7MULW5D8M4AW0HDO88BT38GUICD8AFF0O4",
+            "card": "0X11O6R9XGXM0SAZRSATOHMWADHOF8BC9DFLI0GI4ZE2PSW1",
             "shuliang": 1,
             "leixing": "hotmail"
         }
