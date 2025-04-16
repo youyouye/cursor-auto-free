@@ -134,9 +134,9 @@ def handle_first_turnstile(tab, max_retries: int = 2, retry_interval: tuple = (1
                 if challenge_check:
                     logging.info(get_translation("detected_turnstile"))
                     # Random delay before clicking verification
-                    time.sleep(random.uniform(1, 3))
+                    time.sleep(random.uniform(1, 4))
                     challenge_check.click()
-                    time.sleep(2)
+                    time.sleep(4)
 
                     # Save screenshot after verification
                     save_screenshot(tab, "clicked")
