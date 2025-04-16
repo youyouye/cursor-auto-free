@@ -123,7 +123,7 @@ def handle_first_turnstile(tab, max_retries: int = 2, retry_interval: tuple = (1
             try:
                 # Locate verification frame element
                 challenge_check = (
-                    tab.ele("@id=aPYp3", timeout=2)
+                    tab.ele("@id=ppIS7", timeout=2)
                     .child()
                     .child()
                     .shadow_root.ele("tag:iframe")
@@ -533,6 +533,7 @@ if __name__ == "__main__":
         }
         resp = requests.get("https://zizhu.shanyouxiang.com/huoqu", params=params)
         account, password, refresh_token, client_id = resp.text.split('----')
+        password = password + "@12345"
 
         try:
             logging.info(get_translation("initializing_program"))
