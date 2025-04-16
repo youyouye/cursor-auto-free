@@ -32,8 +32,7 @@ class BrowserManager:
 
         co.set_pref("credentials_enable_service", False)
         co.set_argument("--hide-crash-restore-bubble")
-        # proxy = os.getenv("BROWSER_PROXY")
-        proxy = "http://customer-HynuT9vvHz-cc-US:1Q7ybcncKgZylUi@gate-sg.ipfoxy.io:58688"
+        proxy = os.getenv("BROWSER_PROXY")
         if proxy:
             co.set_proxy(proxy)
 
