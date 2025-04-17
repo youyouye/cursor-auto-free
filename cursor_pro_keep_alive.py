@@ -526,15 +526,24 @@ if __name__ == "__main__":
     #             accounts.append((email.strip(), password.strip(), auth.strip(), clientId.strip()))
 
     for i in range(10000000):
+
         params = {
-            "card": "HSARZGIZ6BXTFK7EQ5TQ1EXC52SHC0FBYU3J68256TDX0YU3",
+            "card": "3JTQF3Q3BTBNCB9UN1CDHPFPOVLS2JP19WDBP433X5B7DRC3",
             "shuliang": 1,
             "leixing": "hotmail"
         }
-        resp = requests.get("https://zizhu.shanyouxiang.com/huoqu", params=params)
-        account, password, refresh_token, client_id = resp.text.split('----')
-        password = password + "@12345"
+        account = password = refresh_token = client_id = None  # Initialize variables
 
+        while True:
+            try:
+                resp = requests.get("https://zizhu.shanyouxiang.com/huoqu", params=params)
+                resp.raise_for_status()
+                account, password, refresh_token, client_id = resp.text.split('----')
+                password = password + "@12345"
+                break
+            except (requests.RequestException, ValueError) as e:
+                print(f"Request failed: {e}. Retrying in 2 seconds...")
+                time.sleep(2)
         try:
             logging.info(get_translation("initializing_program"))
             ExitCursor()
